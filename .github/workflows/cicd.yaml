@@ -23,8 +23,7 @@ jobs:
       # 3. Copy project files to EC2
       - name: Upload Files to EC2
         run: |
-          scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./ \
-          ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp1
+      
 
           scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./* ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp1
 
