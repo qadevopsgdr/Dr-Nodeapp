@@ -25,7 +25,7 @@ jobs:
         run: |
       
 
-          scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./* ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp1
+          scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./* ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/gdr-nodeapp
 
       # 4. SSH into EC2 and deploy with Docker
       - name: Build & Deploy on EC2
@@ -34,7 +34,7 @@ jobs:
 
           echo "🚀 Starting Docker deployment..."
 
-          cd /home/ubuntu/dr-nodeapp
+          cd /home/ubuntu/gdr-nodeapp
 
           echo "🛠 Building Docker image..."
           sudo docker build -t nodeapp-image .
