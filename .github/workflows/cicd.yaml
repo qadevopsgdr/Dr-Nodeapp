@@ -24,7 +24,9 @@ jobs:
       - name: Upload Files to EC2
         run: |
           scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./ \
-          ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp
+          ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp1
+
+          scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./* ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp1
 
       # 4. SSH into EC2 and deploy with Docker
       - name: Build & Deploy on EC2
