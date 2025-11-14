@@ -1,6 +1,6 @@
 name: Node app deployment on  ec2.
 on:
- push:
+ pull:
    branches:
      - main
 jobs:
