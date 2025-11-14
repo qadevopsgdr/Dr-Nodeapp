@@ -24,7 +24,7 @@ jobs:
       - name: Upload Files to EC2
         run: |
           scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./ \
-          ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/nodeapp-temp
+          ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/dr-nodeapp
 
       # 4. SSH into EC2 and deploy with Docker
       - name: Build & Deploy on EC2
@@ -33,7 +33,7 @@ jobs:
 
           echo "🚀 Starting Docker deployment..."
 
-          cd /home/ubuntu/nodeapp-temp
+          cd /home/ubuntu/dr-nodeapp
 
           echo "🛠 Building Docker image..."
           sudo docker build -t nodeapp-image .
