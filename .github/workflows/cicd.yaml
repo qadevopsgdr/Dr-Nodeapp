@@ -1,4 +1,4 @@
-name: Deploy Node App to EC2 - cicd.yaml
+name: Deploy Node App to EC2 - cicd.yaml..
 
 on:
   push:
