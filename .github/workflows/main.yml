@@ -14,7 +14,8 @@ jobs:
       run : |
        echo "${{ secrets.EC2_SSH_KEY }}" > mumbaikey.pem
        chmod 400 mumbaikey.pem
+     
 
     - name: scp files into vm
       run: |
-        scp -o StrictHostkeyChecking=no -i mumbaikey.pem -r ./* ec2-user@${{ secrets.VM_IP}}:/var/www/html/
+        scp -o StrictHostkeyChecking=no -i mumbaikey.pem -r ./* ubuntu@${{ secrets.VM_IP}}:/var/www/html/
