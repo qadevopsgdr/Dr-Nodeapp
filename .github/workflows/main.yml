@@ -2,7 +2,7 @@ name: Node app deployment on  ec2.
 on:
  push:
    branches:
-     -main
+     - main
 jobs:
  deploy:
    runs-on: ubuntu-latest
@@ -16,5 +16,5 @@ jobs:
        chmod 400 mumbaikey.pem
 
     - name: scp files into vm
-      run: 
-        scp -o RemoteHostKeyChecking=no -i mumbaikey.pem -r ./Dr-Nodeapp/* ec2-user@${{ $secrets.VM_IP}}:/var/www/html/
+      run: |
+        scp -o StrictHostkeyChecking=no -i mumbaikey.pem -r ./Dr-Nodeapp/* ec2-user@${{ secrets.VM_IP}}:/var/www/html/
