@@ -1,0 +1,51 @@
+name: Node app deployment on ec2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1 — Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      # Step 2 — Create SSH key
+      - name: Create SSH key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > mumbaikey.pem
+          chmod 400 mumbaikey.pem
+
+      # Step 3 — Copy project files to EC2 (to a temp folder)
+      - name: Upload project to EC2
+        run: |
+          scp -o StrictHostKeyChecking=no -i mumbaikey.pem -r ./ \
+          ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/nodeapp-temp
+
+      # Step 4 — Deploy on EC2
+      - name: Deploy Docker Container on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i mumbaikey.pem ubuntu@${{ secrets.VM_IP }} "
+            set -e
+
+            echo '📁 Moving new files...'
+            rm -rf /home/ubuntu/nodeapp
+            mv /home/ubuntu/nodeapp-temp /home/ubuntu/nodeapp
+
+            cd /home/ubuntu/nodeapp
+
+            echo '🛠 Building Docker image...'
+            docker build -t nodeapp-image .
+
+            echo '🛑 Stopping old container if exists...'
+            docker rm -f nodeapp-container || true
+
+            echo '🚀 Starting new container...'
+            docker run -d --name nodeapp-container -p 80:80 nodeapp-image
+
+            echo '✅ Deployment completed!'
+          "
