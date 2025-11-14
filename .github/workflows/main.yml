@@ -17,4 +17,4 @@ jobs:
 
     - name: scp files into vm
       run: |
-        scp -o StrictHostkeyChecking=no -i mumbaikey.pem -r ./Dr-Nodeapp/* ec2-user@${{ secrets.VM_IP}}:/var/www/html/
+        scp -o StrictHostkeyChecking=no -i mumbaikey.pem -r ./* ec2-user@${{ secrets.VM_IP}}:/var/www/html/
