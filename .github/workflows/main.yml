@@ -1,0 +1,20 @@
+name: Node app deployment on  ec2.
+on:
+ push:
+   branches:
+     -main
+jobs:
+ deploy:
+   runs-on: ubuntu-latest
+
+   steps:
+    - name : checkout
+      uses: actions/checkout@v5
+    - name : copy ssh key
+      run : |
+       echo "${{ secrets.EC2_SSH_KEY }}" > mumbaikey.pem
+       chmod 400 mumbaikey.pem
+
+    - name: scp files into vm
+      run: 
+        scp -o RemoteHostKeyChecking=no -i mumbaikey.pem -r ./Dr-Nodeapp/* ec2-user@${{ $secrets.VM_IP}}:/var/www/html/
