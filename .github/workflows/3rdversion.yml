@@ -44,6 +44,8 @@ jobs:
             cd /home/ubuntu/17nodeapp
 
             echo "🛠 Building Docker Image..."
+            sudo docker image prune -a -f
+
             sudo docker build -t nodeapp-image .
 
             echo "🛑 Removing old container if exists..."
