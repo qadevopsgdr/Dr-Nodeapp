@@ -15,7 +15,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
-    needs: checkout  # This job depends on the 'checkout' job
+    needs: checkout
 
     steps:
       - name: Checkout repo
@@ -47,7 +47,7 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: build  # This job depends on the 'build' job
+    needs: build
 
     steps:
       - name: Deploy on EC2
@@ -64,9 +64,7 @@ jobs:
               docker rm nodeapp-container || true
             fi
             echo "===== REMOVE OLD IMAGES (Except latest 'latest') ====="
-            # Find the image ID of the latest image we want to keep
             KEEP_IMAGE=$(docker images ${{ secrets.ECR_REPO }}:latest --format "{{.ID}}")
-            # Remove all images except the current one
             docker images --format "{{.Repository}} {{.ID}}" | grep ${{ secrets.ECR_REPO }} | while read repo img_id; do
               if [ "$img_id" != "$KEEP_IMAGE" ]; then
                 echo "Removing old image: $img_id"
