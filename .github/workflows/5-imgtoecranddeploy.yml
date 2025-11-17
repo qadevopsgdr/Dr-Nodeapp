@@ -1,4 +1,4 @@
-name: Deploy Node App to EC2 - 5th version
+name: Deploy Node App to EC2 - 5th version - 16:50
 
 on:
   push:
