@@ -1,4 +1,4 @@
-name: 6th version - Deploy to EC2 (Remove Old Images)...
+name: 6th version - Deploy to EC2 (Remove Old Images)
 
 on:
   push:
@@ -17,8 +17,8 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.EC2_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.EC2_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
       # 2. ECR Login
@@ -41,22 +41,19 @@ jobs:
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: ${{ secrets.EC2_HOST }}
+          host: ${{ secrets.VM_IP }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -e
-
             echo "===== STOP & REMOVE OLD CONTAINER ====="
             if [ "$(docker ps -aq -f name=nodeapp-container)" ]; then
               docker stop nodeapp-container || true
               docker rm nodeapp-container || true
             fi
-
             echo "===== REMOVE OLD IMAGES (Except latest 'latest') ====="
             # Find the image ID of the latest image we want to keep
             KEEP_IMAGE=$(docker images ${{ secrets.ECR_REPO }}:latest --format "{{.ID}}")
-
             # Remove all images except the current one
             docker images --format "{{.Repository}} {{.ID}}" | grep ${{ secrets.ECR_REPO }} | while read repo img_id; do
               if [ "$img_id" != "$KEEP_IMAGE" ]; then
@@ -64,17 +61,13 @@ jobs:
                 docker rmi -f "$img_id" || true
               fi
             done
-
             echo "===== Pull Latest Image from ECR ====="
             docker pull ${{ secrets.ECR_REPO }}:latest
-
             echo "===== START NEW CONTAINER ====="
             docker run -d \
               --name nodeapp-container \
               -p 80:80 \
               ${{ secrets.ECR_REPO }}:latest
-
             echo "===== CLEAN DANGLING IMAGES ====="
             docker image prune -f || true
-
             echo "===== DEPLOYMENT COMPLETED SUCCESSFULLY ====="
