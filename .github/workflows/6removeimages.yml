@@ -1,4 +1,4 @@
-name: Deploy NodeApp to AWS ECR & EC2 - 15:37 - 6th version - 16:50
+name: Deploy NodeApp to AWS ECR & EC2 - 15:37 - 6th version - 17:05
 
 on:
   push:
