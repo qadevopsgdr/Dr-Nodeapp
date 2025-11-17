@@ -10,69 +10,96 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout Repo
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    # ---------------------------------------------------------------
+    # 1. Checkout Code
+    # ---------------------------------------------------------------
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      # 2. Configure AWS Credentials
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.EC2_ACCESS_KEY }}
-          aws-secret-access-key: ${{ secrets.EC2_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    # ---------------------------------------------------------------
+    # 2. Configure AWS Credentials (for pushing to ECR)
+    # ---------------------------------------------------------------
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.EC2_ACCESS_KEY }}
+        aws-secret-access-key: ${{ secrets.EC2_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
-      # 3. Login to ECR
-      - name: Login to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
+    # ---------------------------------------------------------------
+    # 3. Login to ECR
+    # ---------------------------------------------------------------
+    - name: Login to Amazon ECR
+      uses: aws-actions/amazon-ecr-login@v2
 
-      # 4. Build & Push Docker Image to ECR
-      - name: Build and Push Docker Image
-        env:
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          ECR_REPOSITORY: ghactions-nodeapp-ecr
-          IMAGE_TAG: latest
-        run: |
-          echo " Building Docker image..."
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+    # ---------------------------------------------------------------
+    # 4. Build & Push Docker Image to ECR
+    # ---------------------------------------------------------------
+    - name: Build and Push Docker Image
+      env:
+        ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+        ECR_REPOSITORY: ghactions-nodeapp-ecr
+        IMAGE_TAG: latest
+      run: |
+        echo "🚀 Building Docker image..."
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
 
-          echo "📤 Pushing image to ECR..."
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        echo "📤 Pushing image to ECR..."
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # 5. Load EC2 SSH Key
-      - name: Load SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > ec2key.pem
-          chmod 400 ec2key.pem
+    # ---------------------------------------------------------------
+    # 5. Load EC2 SSH Key
+    # ---------------------------------------------------------------
+    - name: Load SSH Key
+      run: |
+        echo "${{ secrets.EC2_SSH_KEY }}" > ec2key.pem
+        chmod 400 ec2key.pem
 
-      # 6. Deploy on EC2
-      - name: Deploy on EC2
-        env:
-          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
-          ECR_REPOSITORY: ghactions-nodeapp-ecr
-        run: |
-          ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} << EOF
+    # ---------------------------------------------------------------
+    # 6. Deploy on EC2
+    # ---------------------------------------------------------------
+    - name: Deploy to EC2
+      env:
+        ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+        ECR_REPOSITORY: ghactions-nodeapp-ecr
+      run: |
+        ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} << 'EOF'
 
-            echo "🚀 Starting EC2 Deployment..."
+          echo "=============================="
+          echo "🚀 Starting EC2 Deployment..."
+          echo "=============================="
 
-            echo "🛑 Stopping old container..."
-            sudo docker rm -f nodeapp-container || true
+          # Set AWS credentials so EC2 can pull from ECR
+          export AWS_ACCESS_KEY_ID=${{ secrets.EC2_ACCESS_KEY }}
+          export AWS_SECRET_ACCESS_KEY=${{ secrets.EC2_SECRET_ACCESS_KEY }}
+          export AWS_REGION=${{ secrets.AWS_REGION }}
 
-            echo "🗑 Removing previous Docker image..."
-            old_image_id=\$(sudo docker images -q nodeapp-image)
-            if [ -n "\$old_image_id" ]; then
-              sudo docker rmi -f \$old_image_id || true
-            fi
+          # Login to ECR
+          echo "🔑 Logging into Amazon ECR..."
+          aws ecr get-login-password --region \$AWS_REGION \
+            | sudo docker login --username AWS --password-stdin $ECR_REGISTRY
 
-            echo "📥 Pulling new image from ECR..."
-            sudo aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
-              | sudo docker login --username AWS --password-stdin $ECR_REGISTRY
+          # Stop old container
+          echo "🛑 Stopping old container..."
+          sudo docker rm -f nodeapp-container || true
 
-            sudo docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          # Remove OLD images matching the repository
+          echo "🗑 Removing old images..."
+          old_images=\$(sudo docker images "$ECR_REGISTRY/$ECR_REPOSITORY" -q)
+          if [ -n "\$old_images" ]; then
+            sudo docker rmi -f \$old_images || true
+          fi
 
-            echo "🏃 Starting new container..."
-            sudo docker run -d --name nodeapp-container -p 80:80 \
-              $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          # Pull NEW image
+          echo "📥 Pulling latest image from ECR..."
+          sudo docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-            echo "🎉 Deployment Success!"
-          EOF
+          # Start New Container
+          echo "🏃 Running new container..."
+          sudo docker run -d --name nodeapp-container -p 80:80 \
+            $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+          echo "🎉 Deployment Successful!"
+          echo "=============================="
+
+        EOF
