@@ -63,7 +63,7 @@ jobs:
         ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
         ECR_REPOSITORY: ghactions-nodeapp-ecr
       run: |
-        ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} << EOF
 
           echo "=============================="
           echo "🚀 Starting EC2 Deployment..."
@@ -85,7 +85,9 @@ jobs:
 
           # Remove OLD images matching the repository
           echo "🗑 Removing old images..."
-          old_images=\$(sudo docker images "$ECR_REGISTRY/$ECR_REPOSITORY" -q)
+         # old_images=\$(sudo docker images "$ECR_REGISTRY/$ECR_REPOSITORY" -q)
+          old_images=$(sudo docker images "$ECR_REGISTRY/$ECR_REPOSITORY" -q)
+
           if [ -n "\$old_images" ]; then
             sudo docker rmi -f \$old_images || true
           fi
