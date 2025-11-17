@@ -1,9 +1,9 @@
-name: Deploy to EC2 (Remove Old Images)
+name: 6th version - Deploy to EC2 (Remove Old Images)
 
 on:
   push:
     branches:
-      - develop
+      - main
 
 jobs:
   deploy:
