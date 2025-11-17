@@ -1,0 +1,56 @@
+name: Deploy Node App to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Load SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2key.pem
+          chmod 400 ec2key.pem
+
+      - name: Clean Remote Directory
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} "
+            sudo rm -rf /home/ubuntu/17nodeapp/*
+          "
+
+      - name: Upload Application Files
+        run: |
+          scp -r -o StrictHostKeyChecking=no -i ec2key.pem \
+            app.js package.json Dockerfile \
+            ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/17nodeapp/
+
+      - name: Build and Run Docker Container on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} << 'EOF'
+
+            echo "🚀 Beginning Deployment..."
+            cd /home/ubuntu/17nodeapp
+
+            echo "🛑 Removing old container..."
+            sudo docker rm -f nodeapp-container || true
+
+            echo "🗑 Removing previous Docker image..."
+            old_image_id=$(sudo docker images -q nodeapp-image)
+            if [ -n "$old_image_id" ]; then
+              sudo docker rmi -f $old_image_id || true
+            fi
+
+            echo "🛠 Building new Docker image..."
+            sudo docker build -t nodeapp-image .
+
+            echo "🏃 Starting new container..."
+            sudo docker run -d --name nodeapp-container -p 80:80 nodeapp-image
+
+            echo "✅ Deployment Success!"
+          EOF
