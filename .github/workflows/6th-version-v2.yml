@@ -1,0 +1,89 @@
+name: Deploy NodeApp to AWS ECR & EC2 - 15:37 - 6th version v2 - 17:09
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  checkout:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: checkout
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # Configure AWS Credentials for build environment
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.EC2_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.EC2_SECRET_ACCESS_KEY }}
+          aws-region: ap-south-1
+
+      # Login to Amazon ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Build Docker image
+      - name: Build Docker image
+        run: |
+          IMAGE_TAG=latest
+          IMAGE_URI=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          echo "Building image: $IMAGE_URI"
+          docker build -t $IMAGE_URI .
+
+      # Push Docker image to ECR
+      - name: Push Docker image
+        run: |
+          IMAGE_TAG=latest
+          IMAGE_URI=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:$IMAGE_TAG
+          echo "Pushing image: $IMAGE_URI"
+          docker push $IMAGE_URI
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Deploy on EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.VM_IP }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            echo "===== Logging into ECR on EC2 ====="
+            aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
+
+            echo "===== STOP & REMOVE OLD CONTAINER ====="
+            if [ "$(docker ps -aq -f name=nodeapp-container)" ]; then
+              docker stop nodeapp-container || true
+              docker rm nodeapp-container || true
+            fi
+
+            echo "===== REMOVE OLD IMAGES (Except latest) ====="
+            KEEP_IMAGE=$(docker images ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest --format "{{.ID}}")
+            docker images --format "{{.Repository}} {{.ID}}" | grep ${{ secrets.ECR_REPOSITORY }} | while read repo img_id; do
+              if [ "$img_id" != "$KEEP_IMAGE" ]; then
+                echo "Removing old image: $img_id"
+                docker rmi -f "$img_id" || true
+              fi
+            done
+
+            echo "===== Pull Latest Image from ECR ====="
+            docker pull ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
+
+            echo "===== Start New Container ====="
+            docker run -d --name nodeapp-container -p 80:80 ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
+
+            echo "===== Clean dangling images ====="
+            docker image prune -f || true
+
+            echo "===== Deployment completed successfully ====="
