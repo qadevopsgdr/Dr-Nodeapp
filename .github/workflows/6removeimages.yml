@@ -6,14 +6,22 @@ on:
       - main
 
 jobs:
-  deploy:
+  checkout:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # 1. Configure AWS
+  build:
+    runs-on: ubuntu-latest
+    needs: checkout  # This job depends on the 'checkout' job
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # 1. Configure AWS Credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -37,7 +45,11 @@ jobs:
           IMAGE_TAG=latest
           docker push ${{ secrets.ECR_REPO }}:$IMAGE_TAG
 
-      # 5. Deploy on EC2
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build  # This job depends on the 'build' job
+
+    steps:
       - name: Deploy on EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
