@@ -1,4 +1,4 @@
-name: Deploy Node App to EC2 - cicd.yaml..15th nov
+name: Deploy Node App to EC2 - cicd.yaml..15th nov..
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
         run: |
       
 
-          scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./* ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/gdr-nodeapp
+          scp -r -o StrictHostKeyChecking=no -i ec2key.pem ./* ubuntu@${{ secrets.VM_IP }}:/home/ubuntu/17nodeapp
 
       # 4. SSH into EC2 and deploy with Docker
       - name: Build & Deploy on EC2
@@ -34,7 +34,7 @@ jobs:
 
           echo "🚀 Starting Docker deployment..."
 
-          cd /home/ubuntu/gdr-nodeapp
+          cd /home/ubuntu/17nodeapp
 
           echo "🛠 Building Docker image..."
           sudo docker build -t nodeapp-image .
