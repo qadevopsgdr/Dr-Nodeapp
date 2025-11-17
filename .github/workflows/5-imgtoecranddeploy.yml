@@ -1,0 +1,78 @@
+name: Deploy Node App to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout Repo
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 3. Login to ECR
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 4. Build & Push Docker Image to ECR
+      - name: Build and Push Docker Image
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          ECR_REPOSITORY: ghactions-nodeapp-ecr
+          IMAGE_TAG: latest
+        run: |
+          echo " Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+
+          echo "📤 Pushing image to ECR..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # 5. Load EC2 SSH Key
+      - name: Load SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ec2key.pem
+          chmod 400 ec2key.pem
+
+      # 6. Deploy on EC2
+      - name: Deploy on EC2
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+          ECR_REPOSITORY: ghactions-nodeapp-ecr
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ec2key.pem ubuntu@${{ secrets.VM_IP }} << EOF
+
+            echo "🚀 Starting EC2 Deployment..."
+
+            echo "🛑 Stopping old container..."
+            sudo docker rm -f nodeapp-container || true
+
+            echo "🗑 Removing previous Docker image..."
+            old_image_id=\$(sudo docker images -q nodeapp-image)
+            if [ -n "\$old_image_id" ]; then
+              sudo docker rmi -f \$old_image_id || true
+            fi
+
+            echo "📥 Pulling new image from ECR..."
+            sudo aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+              | sudo docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            sudo docker pull $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+            echo "🏃 Starting new container..."
+            sudo docker run -d --name nodeapp-container -p 80:80 \
+              $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+            echo "🎉 Deployment Success!"
+          EOF
