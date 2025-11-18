@@ -1,4 +1,4 @@
-name: Deploy NodeApp to AWS ECR & EC2 with Docker Compose
+name: Deploy NodeApp to AWS ECR & EC2 with Docker Compose - 7th version
 
 on:
   push:
@@ -6,20 +6,20 @@ on:
       - main
 
 jobs:
-  checkout:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
   build-and-push:
     runs-on: ubuntu-latest
-    needs: checkout
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      # Configure AWS Credentials for build environment
+      - name: Install Docker Compose
+        run: |
+          DOCKER_COMPOSE_VERSION=2.17.3
+          mkdir -p ~/.docker/cli-plugins
+          curl -SL https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
+          chmod +x ~/.docker/cli-plugins/docker-compose
+          docker-compose version
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,15 +27,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.EC2_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
-      # Login to Amazon ECR
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Set image URI environment variable
-      - name: Set Image URI
-        run: echo "IMAGE_URI=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest" >> $GITHUB_ENV
-
-      # Build and push using Docker Compose
       - name: Build and Push with Docker Compose
         run: |
           docker-compose build app
@@ -56,8 +50,9 @@ jobs:
             echo "===== Logging into ECR on EC2 ====="
             aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-            echo "===== Pull Latest Image Using Docker Compose ====="
-            cd /path/to/your/docker-compose-directory
+            cd /home/ubuntu/Dr-Nodeapp   # <-- Update to your actual code location
+
+            echo "===== Pull latest image with Docker Compose ====="
             docker-compose pull app
 
             echo "===== Stop and Remove Existing Containers ====="
