@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 
-app.get("/", (req, res) => res.send("<h1> Hi, Text updated from ec2 instance - app.js file on nov 18th at 11:15,,,This is sample Node JS application. Pushed image to AWS ECR and deployed on EC2 Instance...1st version.......Deployed at 15:43 ...Deploying at 15:55..Changed to t2.micro and testing deployment...at 16:53...17:00 </h1>"));
+app.get("/", (req, res) => res.send("<h1> Hi, deploying with t2.micro...on nov 18th at 11:40.. </h1>"));
 
 app.listen(80, () => {
   console.log("App listening on port 80!");
