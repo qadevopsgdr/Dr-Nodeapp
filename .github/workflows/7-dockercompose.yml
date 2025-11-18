@@ -1,4 +1,4 @@
-name: Deploy NodeApp to AWS ECR & EC2 with Docker Compose - 7th version
+name: Deploy NodeApp to AWS ECR & EC2 with Docker Compose -  7th version 2
 
 on:
   push:
@@ -12,14 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install Docker Compose
-        run: |
-          DOCKER_COMPOSE_VERSION=2.17.3
-          mkdir -p ~/.docker/cli-plugins
-          curl -SL https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker compose-linux-x86_64 -o ~/.docker/cli-plugins/docker compose
-          chmod +x ~/.docker/cli-plugins/docker compose
-          docker compose version
-
+      # Configure AWS Credentials for build environment
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -27,11 +20,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.EC2_SECRET_ACCESS_KEY }}
           aws-region: ap-south-1
 
+      # Login to Amazon ECR
       - name: Login to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
+      # Build and Push using Docker Compose V2 (preinstalled!)
       - name: Build and Push with Docker Compose
         run: |
+          docker compose version
           docker compose build app
           docker compose push app
 
@@ -50,18 +46,18 @@ jobs:
             echo "===== Logging into ECR on EC2 ====="
             aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
 
-            cd /home/ubuntu/Dr-Nodeapp   # <-- Update to your actual code location
+            cd /home/ubuntu/Dr-Nodeapp   # <-- update this to the location of your compose file on EC2
 
             echo "===== Pull latest image with Docker Compose ====="
             docker compose pull app
 
-            echo "===== Stop and Remove Existing Containers ====="
+            echo "===== Stop and Remove existing containers ====="
             docker compose down
 
-            echo "===== Start Containers ====="
+            echo "===== Start containers ====="
             docker compose up -d
 
-            echo "===== Clean dangling images ====="
+            echo "===== Clean up dangling images ====="
             docker image prune -f || true
 
             echo "===== Deployment completed successfully ====="
