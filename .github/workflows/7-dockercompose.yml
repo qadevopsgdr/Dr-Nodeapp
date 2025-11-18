@@ -16,9 +16,9 @@ jobs:
         run: |
           DOCKER_COMPOSE_VERSION=2.17.3
           mkdir -p ~/.docker/cli-plugins
-          curl -SL https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker-compose-linux-x86_64 -o ~/.docker/cli-plugins/docker-compose
-          chmod +x ~/.docker/cli-plugins/docker-compose
-          docker-compose version
+          curl -SL https://github.com/docker/compose/releases/download/v${DOCKER_COMPOSE_VERSION}/docker compose-linux-x86_64 -o ~/.docker/cli-plugins/docker compose
+          chmod +x ~/.docker/cli-plugins/docker compose
+          docker compose version
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -32,8 +32,8 @@ jobs:
 
       - name: Build and Push with Docker Compose
         run: |
-          docker-compose build app
-          docker-compose push app
+          docker compose build app
+          docker compose push app
 
   deploy:
     runs-on: ubuntu-latest
@@ -53,13 +53,13 @@ jobs:
             cd /home/ubuntu/Dr-Nodeapp   # <-- Update to your actual code location
 
             echo "===== Pull latest image with Docker Compose ====="
-            docker-compose pull app
+            docker compose pull app
 
             echo "===== Stop and Remove Existing Containers ====="
-            docker-compose down
+            docker compose down
 
             echo "===== Start Containers ====="
-            docker-compose up -d
+            docker compose up -d
 
             echo "===== Clean dangling images ====="
             docker image prune -f || true
